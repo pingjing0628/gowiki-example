@@ -1,11 +1,11 @@
 package main
 
 import (
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
-	"text/template"
 )
 
 // A wiki consists of a series of interconnected pages,
@@ -53,8 +53,6 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
-var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
 // func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
 // 	m := validPath.FindStringSubmatch(r.URL.Path)
@@ -110,6 +108,8 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
+var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+
 func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		m := validPath.FindStringSubmatch(r.URL.Path)
@@ -129,5 +129,6 @@ func main() {
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
