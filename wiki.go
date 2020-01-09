@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"text/template"
 )
 
 // A wiki consists of a series of interconnected pages,
@@ -42,6 +43,20 @@ func loadPage(title string) (*Page, error) {
 	}
 	return &Page{Title: title, Body: body}, nil
 }
+
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	t, err := template.ParseFiles(tmpl + ".html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = t.Execute(w, p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
 
 // viewHandler extracts the page title from r.URL.Path,
 // re-sliced with [len("/view/"):] to drop the leading "/view/" component of the request path.
