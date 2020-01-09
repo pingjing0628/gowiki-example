@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 )
 
 // A wiki consists of a series of interconnected pages,
@@ -42,9 +43,49 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Body: body}, nil
 }
 
+// viewHandler extracts the page title from r.URL.Path,
+// re-sliced with [len("/view/"):] to drop the leading "/view/" component of the request path.
+// because the path will invariably begin with "/view/", which is not part of the page's title.
+// then loads the page data, formats the page with a string of simple HTML, and writes it to w.
+
+func viewHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/view/"):]
+	p, err := loadPage(title)
+	if err != nil {
+		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
+		return
+	}
+	renderTemplate(w, "view", p)
+}
+
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/edit/"):]
+	p, err := loadPage(title)
+	if err != nil {
+		p = &Page{Title: title}
+	}
+	renderTemplate(w, "edit", p)
+}
+
+func saveHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/save/"):]
+	body := r.FormValue("body")
+	p := &Page{Title: title, Body: []byte(body)}
+	err := p.save()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+}
+
 func main() {
-	p1 := &Page{Title: "TestPage", Body: []byte("This is a test Page.")}
-	p1.save()
-	p2, _ := loadPage("TestPage")
-	fmt.Println(string(p2.Body))
+	// p1 := &Page{Title: "TestPage", Body: []byte("This is a test Page.")}
+	// p1.save()
+	// p2, _ := loadPage("TestPage")
+	// fmt.Println(string(p2.Body))
+	http.HandleFunc("/view/", viewHandler)
+	http.HandleFunc("/edit/", editHandler)
+	http.HandleFunc("/save/", saveHandler)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
